@@ -366,6 +366,9 @@ module GFS_typedefs
     real (kind=kind_phys), pointer :: smcwtdxy(:)  => null()  !<
     real (kind=kind_phys), pointer :: deeprechxy(:)=> null()  !<
     real (kind=kind_phys), pointer :: rechxy  (:)  => null()  !<
+    real (kind=kind_phys), pointer :: sfcheadrt(:) => null()  !<
+    real (kind=kind_phys), pointer :: infxsrt  (:) => null()  !<
+    real (kind=kind_phys), pointer :: soldrain (:) => null()  !<
     real (kind=kind_phys), pointer :: albdirvis_lnd (:) => null()  !<
     real (kind=kind_phys), pointer :: albdirnir_lnd (:) => null()  !<
     real (kind=kind_phys), pointer :: albdifvis_lnd (:) => null()  !<
@@ -2612,6 +2615,9 @@ module GFS_typedefs
     allocate (Sfcprop%slc    (IM,Model%lsoil))
     allocate (Sfcprop%smc    (IM,Model%lsoil))
     allocate (Sfcprop%stc    (IM,Model%lsoil))
+    allocate (Sfcprop%sfcheadrt(IM))
+    allocate (Sfcprop%infxsrt  (IM))
+    allocate (Sfcprop%soldrain (IM))
 
     Sfcprop%hice   = clear_val
     Sfcprop%weasd  = clear_val
@@ -2637,6 +2643,9 @@ module GFS_typedefs
     Sfcprop%slc    = clear_val
     Sfcprop%smc    = clear_val
     Sfcprop%stc    = clear_val
+    Sfcprop%sfcheadrt = clear_val
+    Sfcprop%infxsrt   = clear_val
+    Sfcprop%soldrain  = clear_val
 
 !--- Out
     allocate (Sfcprop%t2m (IM))

@@ -26,7 +26,7 @@ module module_cplfields
   !  l : model levels (3D)
   !  s : surface (2D)
   !  t : tracers (4D)
-  integer,          public, parameter :: NexportFields = 121
+  integer,          public, parameter :: NexportFields = 125
   type(ESMF_Field), target, public    :: exportFields(NexportFields)
 
   type(FieldInfo), dimension(NexportFields), public, parameter :: exportFieldsInfo = [ &
@@ -50,7 +50,11 @@ module module_cplfields
     FieldInfo("inst_cloud_frac_levels                   ", "l"), &
     FieldInfo("inst_friction_velocity                   ", "s"), &
     FieldInfo("inst_rainfall_amount                     ", "s"), &
+    FieldInfo("inst_total_soil_moisture_content         ", "g"), &
     FieldInfo("inst_soil_moisture_content               ", "g"), &
+    FieldInfo("inst_soil_temperature                    ", "g"), &
+    FieldInfo("time_step_infiltration_excess            ", "s"), &
+    FieldInfo("soil_column_drainage                     ", "s"), &
     FieldInfo("inst_surface_soil_wetness                ", "s"), &
     FieldInfo("inst_up_sensi_heat_flx                   ", "s"), &
     FieldInfo("inst_lwe_snow_thickness                  ", "s"), &
@@ -160,7 +164,7 @@ module module_cplfields
     FieldInfo("cpl_scalars                              ", "s")]
 
 ! Import Fields ----------------------------------------
-  integer,          public, parameter :: NimportFields = 67 + 3 + 5 !IVAI: add 3 inst_tracer_diag
+  integer,          public, parameter :: NimportFields = 71 + 3 + 5 !IVAI: add 3 inst_tracer_diag
   logical,          public            :: importFieldsValid(NimportFields)
   type(ESMF_Field), target, public    :: importFields(NimportFields)
 
@@ -219,6 +223,10 @@ module module_cplfields
     FieldInfo("inst_drag_wind_speed_for_momentum        ", "s"), &
     FieldInfo("inst_drag_mass_flux_for_heat_and_moisture", "s"), &
     FieldInfo("inst_func_of_roughness_length_and_vfrac  ", "s"), &
+    FieldInfo("inst_total_soil_moisture_content         ", "g"), &
+    FieldInfo("inst_soil_moisture_content               ", "g"), &
+    FieldInfo("inst_soil_temperature                    ", "g"), &
+    FieldInfo("surface_water_depth                      ", "s"), &
 
     !  For JEDI
     ! dynamics

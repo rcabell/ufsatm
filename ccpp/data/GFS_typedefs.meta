@@ -1775,6 +1775,27 @@
   type = real
   kind = kind_phys
   active = (control_for_land_surface_scheme == identifier_for_noahmp_land_surface_scheme)
+[sfcheadrt]
+  standard_name = surface_water_depth
+  long_name = surface water depth
+  units = mm
+  dimensions = (horizontal_loop_extent)
+  type = real
+  kind = kind_phys
+[infxsrt]
+  standard_name = time_step_infiltration_excess
+  long_name = time step infiltration excess
+  units = mm
+  dimensions = (horizontal_loop_extent)
+  type = real
+  kind = kind_phys
+[soldrain]
+  standard_name = soil_column_drainage
+  long_name = soil column drainage
+  units = mm
+  dimensions = (horizontal_loop_extent)
+  type = real
+  kind = kind_phys
 [albdirvis_lnd]
   standard_name = surface_albedo_direct_visible_over_land
   long_name = direct surface albedo visible band over land

@@ -1926,6 +1926,9 @@ end subroutine update_atmos_chemistry
     real(kind=ESMF_KIND_R8),  dimension(:,:,:), pointer:: datar83d
     real(kind=GFS_kind_phys), dimension(:,:), pointer  :: datar8
     logical,                  dimension(:,:), pointer  :: mergeflg
+    real(kind=ESMF_KIND_R8),  dimension(:,:,:), pointer:: impDbg(:,:,:)
+    integer                                            :: ungriddedLBound(1)
+    integer                                            :: ungriddedUBound(1)
     real(kind=GFS_kind_phys)                           :: tem, ofrac
     logical found, isFieldCreated, lcpl_fice
     real(ESMF_KIND_R8), parameter :: missing_value = 9.99e20_ESMF_KIND_R8
@@ -1973,6 +1976,8 @@ end subroutine update_atmos_chemistry
 
         datar8 = -99999.0
         mergeflg = .false.
+        ungriddedLBound = 1
+        ungriddedUBound = 1
         call ESMF_FieldGet(importFields(n), dimCount=dimCount ,typekind=datatype, &
                            name=impfield_name, rc=rc)
           if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) return
@@ -1994,11 +1999,22 @@ end subroutine update_atmos_chemistry
           if ( datatype == ESMF_TYPEKIND_R8) then
             call ESMF_FieldGet(importFields(n),farrayPtr=datar83d,localDE=0, rc=rc)
             if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) return
+            call ESMF_FieldGet(importFields(n), ungriddedLBound=ungriddedLBound, &
+                                                ungriddedUBound=ungriddedUBound, rc=rc)
+            if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) return
+            if (GFS_control%cpl_imp_mrg) then
+              mergeflg(:,:) = datar83d(:,:,1).eq.missing_value
+            endif
+
             found = .true.
           endif
         endif
 !
         if (found) then
+         if (GFS_control%cpl_imp_dbg) then
+           allocate(impDbg(isc:iec,jsc:jec,ungriddedLBound(1):ungriddedUBound(1)))
+           impDbg = missing_value
+         endif
          if (datar8(isc,jsc) > -99998.0) then
 !
         ! get sea land mask: in order to update the coupling fields over the ocean/ice
@@ -2089,6 +2105,17 @@ end subroutine update_atmos_chemistry
                   endif
                 enddo
               enddo
+              if (GFS_control%cpl_imp_dbg) then
+!$omp parallel do default(shared) private(i,j,nb,ix,im)
+                do j=jsc,jec
+                  do i=isc,iec
+                    nb = Atm_block%blkno(i,j)
+                    ix = Atm_block%ixp(i,j)
+                    im = GFS_control%chunk_begin(nb)+ix-1
+                    impDbg(i,j,1) = GFS_Sfcprop%tsfc(im)
+                  enddo
+                enddo
+              endif
               if (mpp_pe() == mpp_root_pe() .and. debug)  print *,'get sst from mediator'
             endif
           endif
@@ -2812,6 +2839,126 @@ end subroutine update_atmos_chemistry
 
 !-------------------------------------------------------
 
+       ! for hydrology
+
+        fldname = 'inst_total_soil_moisture_content'
+        if (trim(impfield_name) == trim(fldname)) then
+          findex  = queryImportFields(fldname)
+          if (importFieldsValid(findex)) then
+!$omp parallel do default(shared) private(i,j,nb,ix,im)
+            do j=jsc,jec
+              do i=isc,iec
+                nb = Atm_block%blkno(i,j)
+                ix = Atm_block%ixp(i,j)
+                im = GFS_control%chunk_begin(nb)+ix-1
+                if(.not. mergeflg(i,j)) then
+                  GFS_sfcprop%smc(im,:) = datar83d(i-isc+1,j-jsc+1,:)
+                endif
+              enddo
+            enddo
+            if (GFS_control%cpl_imp_dbg) then
+!$omp parallel do default(shared) private(i,j,nb,ix,im)
+              do j=jsc,jec
+                do i=isc,iec
+                  nb = Atm_block%blkno(i,j)
+                  ix = Atm_block%ixp(i,j)
+                  im = GFS_control%chunk_begin(nb)+ix-1
+                  impDbg(i,j,:) = GFS_Sfcprop%smc(im,:)
+                enddo
+              enddo
+            endif
+          endif
+        endif
+
+        fldname = 'inst_soil_moisture_content'
+        if (trim(impfield_name) == trim(fldname)) then
+          findex  = queryImportFields(fldname)
+          if (importFieldsValid(findex)) then
+!$omp parallel do default(shared) private(i,j,nb,ix,im)
+            do j=jsc,jec
+              do i=isc,iec
+                nb = Atm_block%blkno(i,j)
+                ix = Atm_block%ixp(i,j)
+                im = GFS_control%chunk_begin(nb)+ix-1
+                if(.not. mergeflg(i,j)) then
+                  GFS_sfcprop%slc(im,:) = datar83d(i-isc+1,j-jsc+1,:)
+                endif
+              enddo
+            enddo
+            if (GFS_control%cpl_imp_dbg) then
+!$omp parallel do default(shared) private(i,j,nb,ix,im)
+              do j=jsc,jec
+                do i=isc,iec
+                  nb = Atm_block%blkno(i,j)
+                  ix = Atm_block%ixp(i,j)
+                  im = GFS_control%chunk_begin(nb)+ix-1
+                  impDbg(i,j,:) = GFS_Sfcprop%slc(im,:)
+                enddo
+              enddo
+            endif
+          endif
+        endif
+
+        fldname = 'inst_soil_temperature'
+        if (trim(impfield_name) == trim(fldname)) then
+          findex  = queryImportFields(fldname)
+          if (importFieldsValid(findex)) then
+!$omp parallel do default(shared) private(i,j,nb,ix,im)
+            do j=jsc,jec
+              do i=isc,iec
+                nb = Atm_block%blkno(i,j)
+                ix = Atm_block%ixp(i,j)
+                im = GFS_control%chunk_begin(nb)+ix-1
+                if(.not. mergeflg(i,j)) then
+                  GFS_sfcprop%stc(im,:) = datar83d(i-isc+1,j-jsc+1,:)
+                endif
+              enddo
+            enddo
+            if (GFS_control%cpl_imp_dbg) then
+!$omp parallel do default(shared) private(i,j,nb,ix,im)
+              do j=jsc,jec
+                do i=isc,iec
+                  nb = Atm_block%blkno(i,j)
+                  ix = Atm_block%ixp(i,j)
+                  im = GFS_control%chunk_begin(nb)+ix-1
+                  impDbg(i,j,:) = GFS_Sfcprop%stc(im,:)
+                enddo
+              enddo
+            endif
+          endif
+        endif
+
+        fldname = 'surface_water_depth'
+        if (trim(impfield_name) == trim(fldname)) then
+          findex  = queryImportFields(fldname)
+          if (importFieldsValid(findex)) then
+!$omp parallel do default(shared) private(i,j,nb,ix,im)
+            do j=jsc,jec
+              do i=isc,iec
+                nb = Atm_block%blkno(i,j)
+                ix = Atm_block%ixp(i,j)
+                im = GFS_control%chunk_begin(nb)+ix-1
+                if(.not. mergeflg(i,j)) then
+                  GFS_sfcprop%sfcheadrt(im) = datar82d(i-isc+1,j-jsc+1)
+                endif
+              enddo
+            enddo
+            if (GFS_control%cpl_imp_dbg) then
+!$omp parallel do default(shared) private(i,j,nb,ix,im)
+              do j=jsc,jec
+                do i=isc,iec
+                  nb = Atm_block%blkno(i,j)
+                  ix = Atm_block%ixp(i,j)
+                  im = GFS_control%chunk_begin(nb)+ix-1
+                  impDbg(i,j,1) = GFS_Sfcprop%sfcheadrt(im)
+                enddo
+              enddo
+            endif
+          endif
+        endif
+
+!-------------------------------------------------------
+
        ! For JEDI
 
         sphum   = get_tracer_index(MODEL_ATMOS, 'sphum')
@@ -3249,23 +3396,21 @@ end subroutine update_atmos_chemistry
           endif
         endif
 
-          ! write post merge import data to NetCDF file.
-          if (GFS_control%cpl_imp_dbg) then
-            call ESMF_FieldGet(importFields(n), grid=grid, rc=rc)
-            if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) return
-
-            dbgField = ESMF_FieldCreate(grid=grid, farrayPtr=datar8, name=impfield_name, rc=rc)
-            if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) return
-
-            write (currtimestring, "(I4.4,'-',I2.2,'-',I2.2,'T',I2.2,':',I2.2,':',I2.2)") &
-                                   jdat(1), jdat(2), jdat(3), jdat(5), jdat(6), jdat(7)
-            call ESMF_FieldWrite(dbgField, fileName='fv3_merge_'//trim(impfield_name)//'_'// &
-                                 trim(currtimestring)//'.nc', rc=rc)
-            if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) return
-
-            call ESMF_FieldDestroy(dbgField, rc=rc)
-            if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) return
-          endif
+        ! write import debug data to NetCDF file.
+        if (GFS_control%cpl_imp_dbg) then
+          call ESMF_FieldGet(importFields(n), grid=grid, rc=rc)
+          if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) return
+          write (currtimestring, "(I4.4,'-',I2.2,'-',I2.2,'T',I2.2,':',I2.2,':',I2.2)") &
+          jdat(1), jdat(2), jdat(3), jdat(5), jdat(6), jdat(7)
+          dbgField = ESMF_FieldCreate(grid=grid, farrayPtr=impDbg, name=impfield_name, rc=rc)
+          if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) return
+          call ESMF_FieldWrite(dbgField, fileName='fv3_imp_dbg_'//trim(impfield_name)//'_'// &
+            trim(currtimestring)//'.nc', rc=rc)
+          if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) return
+          call ESMF_FieldDestroy(dbgField, rc=rc)
+          if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) return
+          deallocate(impDbg)
+        endif
 
         endif ! if (found) then
       endif   ! if (isFieldCreated) then
@@ -3621,7 +3766,18 @@ end subroutine update_atmos_chemistry
             ! bottom layer height (z)
             case('inst_height_lowest')
               call block_data_copy_or_fill(datar82d, DYCORE_data(nb)%coupling%z_bot, zeror8, Atm_block, nb, offset=1, rc=localrc)
-            !--- JEDI fields
+            !--- hydrology fields
+            case ('inst_total_soil_moisture_content')
+              call block_data_copy(datar83d, GFS_Sfcprop%smc, Atm_block, nb, offset=GFS_Control%chunk_begin(nb), rc=localrc)
+            case ('inst_soil_moisture_content')
+              call block_data_copy(datar83d, GFS_Sfcprop%slc, Atm_block, nb, offset=GFS_Control%chunk_begin(nb), rc=localrc)
+            case ('inst_soil_temperature')
+              call block_data_copy(datar83d, GFS_Sfcprop%stc, Atm_block, nb, offset=GFS_Control%chunk_begin(nb), rc=localrc)
+            case ('time_step_infiltration_excess')
+              call block_data_copy(datar82d, GFS_Sfcprop%infxsrt, Atm_block, nb, offset=GFS_Control%chunk_begin(nb), rc=localrc)
+            case ('soil_column_drainage')
+              call block_data_copy(datar82d, GFS_Sfcprop%soldrain, Atm_block, nb, offset=GFS_Control%chunk_begin(nb), rc=localrc)
+        !--- JEDI fields
             case ('u')
               call block_atmos_copy(datar83d, Atm(mygrid)%u(isc:iec,jsc:jec,:), Atm_block, nb, offset=1, rc=localrc)
             case ('v')
