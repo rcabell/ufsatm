@@ -1779,21 +1779,21 @@
   standard_name = surface_water_depth
   long_name = surface water depth
   units = mm
-  dimensions = (horizontal_loop_extent)
+  dimensions = (horizontal_dimension)
   type = real
   kind = kind_phys
 [infxsrt]
   standard_name = time_step_infiltration_excess
   long_name = time step infiltration excess
   units = mm
-  dimensions = (horizontal_loop_extent)
+  dimensions = (horizontal_dimension)
   type = real
   kind = kind_phys
 [soldrain]
   standard_name = soil_column_drainage
   long_name = soil column drainage
   units = mm
-  dimensions = (horizontal_loop_extent)
+  dimensions = (horizontal_dimension)
   type = real
   kind = kind_phys
 [albdirvis_lnd]
